@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
+
+	"github.com/shawntoffel/docker-secrets-provisioner/pkg/env"
 )
 
 // APIVersion is the Azure Key Vault API version
@@ -40,10 +41,10 @@ type keyVaultErrorResponse struct {
 func NewProviderFromEnv() AzureKV {
 	return AzureKV{
 		httpClient:     &http.Client{Timeout: 5 * time.Second},
-		clientID:       os.Getenv("ARM_CLIENT_ID"),
-		clientSecret:   os.Getenv("ARM_CLIENT_SECRET"),
-		tenantID:       os.Getenv("ARM_TENANT_ID"),
-		subscriptionID: os.Getenv("ARM_SUBSCRIPTION_ID"),
+		clientID:       env.ReadSecretEnv("ARM_CLIENT_ID"),
+		clientSecret:   env.ReadSecretEnv("ARM_CLIENT_SECRET"),
+		tenantID:       env.ReadSecretEnv("ARM_TENANT_ID"),
+		subscriptionID: env.ReadSecretEnv("ARM_SUBSCRIPTION_ID"),
 	}
 }
 
