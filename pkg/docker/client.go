@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 )
 
 type errorResponse struct {
@@ -23,6 +24,14 @@ type Client struct {
 // NewClient creates a new Docker client
 func NewClient(host string, version string) Client {
 	return NewClientWithHTTPClient(&http.Client{}, host, version)
+}
+
+// NewClientFromEnv creates a new Docker client with values from environment variables
+func NewClientFromEnv() Client {
+	return NewClientWithHTTPClient(
+		&http.Client{},
+		os.Getenv("DOCKER_HOST"),
+		os.Getenv("DOCKER_API_VERSION"))
 }
 
 // NewClientWithHTTPClient creates a new Docker client with the provided http client

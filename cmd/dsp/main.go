@@ -14,28 +14,16 @@ import (
 // Version of dsp
 var Version = ""
 
-var dockerHostEnvVar = "DOCKER_HOST"
-
 var (
-	flagVersion          = false
-	flagDockerHost       = ""
-	flagDockerAPIVersion = ""
-	flagSourceName       = ""
-	flagSourceVersion    = ""
-	flagTargetName       = ""
+	flagVersion    = false
+	flagSourceID   = ""
+	flagTargetName = ""
 )
 
 func parseCli() {
 	flag.BoolVar(&flagVersion, "v", false, "version")
-	flag.StringVar(&flagDockerHost, "docker.host", flagDockerHost, "The Docker host. "+dockerHostEnvVar)
-	flag.StringVar(&flagDockerAPIVersion, "docker.apiversion", flagDockerAPIVersion, "Docker API version")
-	flag.StringVar(&flagSourceName, "source.name", flagSourceName, "The source secret name")
-	flag.StringVar(&flagSourceVersion, "source.version", flagSourceVersion, "The source secret version")
-	flag.StringVar(&flagTargetName, "target.name", flagTargetName, "The target secret name")
-
-	if flagDockerHost == "" {
-		flagDockerHost = os.Getenv(dockerHostEnvVar)
-	}
+	flag.StringVar(&flagSourceID, "source-id", flagSourceID, "The source secret id")
+	flag.StringVar(&flagTargetName, "target-name", flagTargetName, "The target secret name")
 
 	flag.Parse()
 }
@@ -47,12 +35,12 @@ func main() {
 		os.Exit(0)
 	}
 
-	provider := azurekv.NewProvider()
-	dockerClient := docker.NewClient(flagDockerHost, flagDockerAPIVersion)
+	provider := azurekv.NewProviderFromEnv()
+	dockerClient := docker.NewClientFromEnv()
 
 	p := provisioner.New(provider, dockerClient)
 
-	id, err := p.Provision(flagSourceName, flagSourceVersion, flagTargetName)
+	id, err := p.Provision(flagSourceID, flagTargetName)
 	if err != nil {
 		log.Fatal(err)
 		os.Exit(1)

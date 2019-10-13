@@ -20,17 +20,17 @@ func New(provider provider.Provider, dockerClient docker.Client) Provisioner {
 }
 
 // Provision provisions a docker secret from the provider
-func (p Provisioner) Provision(sourceName string, sourceVersion string, targetName string) (string, error) {
-	secret, err := p.provider.Secret(sourceName, sourceVersion)
+func (p Provisioner) Provision(sourceID string, targetName string) (string, error) {
+	secret, err := p.provider.Secret(sourceID)
 	if err != nil {
-		return "", fmt.Errorf("couldn't retrieve secret from provider: %s", err.Error())
+		return "", fmt.Errorf("could not retrieve secret from provider: %s", err.Error())
 	}
 
 	encoded := base64.StdEncoding.EncodeToString([]byte(secret))
 
 	resp, err := p.docker.CreateSecret(docker.CreateSecretRequest{Name: targetName, Data: encoded})
 	if err != nil {
-		return "", fmt.Errorf("couldn't create docker secret: %s", err.Error())
+		return "", fmt.Errorf("could not create docker secret: %s", err.Error())
 	}
 
 	return resp.ID, nil

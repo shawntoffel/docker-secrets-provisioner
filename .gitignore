@@ -12,3 +12,7 @@
 *.out
 
 bin/
+
+.env
+
+.vscode
