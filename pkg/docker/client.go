@@ -11,6 +11,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+
+	"github.com/shawntoffel/docker-secrets-provisioner/pkg/env"
 )
 
 type errorResponse struct {
@@ -29,7 +31,11 @@ func NewClientFromEnv() (Client, error) {
 	httpClient := &http.Client{}
 
 	if os.Getenv("DOCKER_TLS_VERIFY") != "" {
-		tlsConfig, err := loadTLSConfig()
+		tlsConfig, err := loadTLSConfig(
+			env.ReadSecretEnv("DOCKER_CERT"),
+			env.ReadSecretEnv("DOCKER_KEY"),
+			env.ReadSecretEnv("DOCKER_CA"),
+		)
 		if err != nil {
 			return Client{}, err
 		}
@@ -97,15 +103,13 @@ func (c Client) decodeErrorResponse(body io.ReadCloser) (string, error) {
 	return "docker error: " + errorResponse.Message, nil
 }
 
-func loadTLSConfig() (*tls.Config, error) {
-	path := os.Getenv("DOCKER_CERT_PATH")
-
-	cert, err := tls.LoadX509KeyPair(path+"/cert.pem", path+"/key.pem")
+func loadTLSConfig(certPath string, keyPath string, caPath string) (*tls.Config, error) {
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return nil, fmt.Errorf("docker client: could not load key pair")
 	}
 
-	caCert, err := ioutil.ReadFile(path + "/ca.pem")
+	caCert, err := ioutil.ReadFile(caPath)
 	if err != nil {
 		return nil, fmt.Errorf("docker client: could not read CA file")
 	}
