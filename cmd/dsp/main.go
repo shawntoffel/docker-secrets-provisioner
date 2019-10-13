@@ -35,8 +35,13 @@ func main() {
 		os.Exit(0)
 	}
 
+	dockerClient, err := docker.NewClientFromEnv()
+	if err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+
 	provider := azurekv.NewProviderFromEnv()
-	dockerClient := docker.NewClientFromEnv()
 
 	p := provisioner.New(provider, dockerClient)
 

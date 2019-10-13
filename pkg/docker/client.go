@@ -2,10 +2,13 @@ package docker
 
 import (
 	"bytes"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 )
@@ -21,26 +24,28 @@ type Client struct {
 	httpClient *http.Client
 }
 
-// NewClient creates a new Docker client
-func NewClient(host string, version string) Client {
-	return NewClientWithHTTPClient(&http.Client{}, host, version)
-}
-
 // NewClientFromEnv creates a new Docker client with values from environment variables
-func NewClientFromEnv() Client {
-	return NewClientWithHTTPClient(
-		&http.Client{},
-		os.Getenv("DOCKER_HOST"),
-		os.Getenv("DOCKER_API_VERSION"))
-}
+func NewClientFromEnv() (Client, error) {
+	httpClient := &http.Client{}
 
-// NewClientWithHTTPClient creates a new Docker client with the provided http client
-func NewClientWithHTTPClient(client *http.Client, host string, version string) Client {
-	return Client{
-		httpClient: client,
-		host:       host,
-		version:    version,
+	if os.Getenv("DOCKER_TLS_VERIFY") != "" {
+		tlsConfig, err := loadTLSConfig()
+		if err != nil {
+			return Client{}, err
+		}
+
+		httpClient.Transport = &http.Transport{
+			TLSClientConfig: tlsConfig,
+		}
 	}
+
+	client := Client{
+		httpClient: httpClient,
+		host:       os.Getenv("DOCKER_HOST"),
+		version:    os.Getenv("DOCKER_API_VERSION"),
+	}
+
+	return client, nil
 }
 
 func (c Client) create(endpoint string, data interface{}, response interface{}) error {
@@ -90,4 +95,30 @@ func (c Client) decodeErrorResponse(body io.ReadCloser) (string, error) {
 	}
 
 	return "docker error: " + errorResponse.Message, nil
+}
+
+func loadTLSConfig() (*tls.Config, error) {
+	path := os.Getenv("DOCKER_CERT_PATH")
+
+	cert, err := tls.LoadX509KeyPair(path+"/cert.pem", path+"/key.pem")
+	if err != nil {
+		return nil, fmt.Errorf("docker client: could not load key pair")
+	}
+
+	caCert, err := ioutil.ReadFile(path + "/ca.pem")
+	if err != nil {
+		return nil, fmt.Errorf("docker client: could not read CA file")
+	}
+
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      caCertPool,
+	}
+
+	tlsConfig.BuildNameToCertificate()
+
+	return tlsConfig, nil
 }
