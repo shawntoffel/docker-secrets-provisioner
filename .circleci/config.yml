@@ -1,56 +1,71 @@
- version: 2                                                                       
- jobs:                                                                            
-   test:                                                                          
-     docker:                                                                      
-       - image: golang:1.13                                                  
-     steps:                                                                       
-       - checkout                                                                 
-       - run: make                                                                
-   docker-build:                                                                  
-     docker:                                                                      
-         - image: docker:stable-git                                               
-     steps:                                                                       
-       - checkout                                                                 
-       - setup_remote_docker                                                      
-       - run: apk add --update make                                               
-       - run: make docker-build                                                   
-       - run: make docker-save                                                    
-       - persist_to_workspace:                                                    
-           root: .                                                                
-           paths:                                                                 
+version: 2                                                                       
+jobs:                                                                            
+  test:                                                                          
+    docker:                                                                      
+      - image: golang:1.13                                                  
+      steps:                                                                       
+        - checkout                                                                 
+        - run: make                                                                
+    docker-build:                                                                  
+      docker:                                                                      
+        - image: docker:stable-git                                               
+      steps:                                                                       
+        - checkout                                                                 
+        - setup_remote_docker                                                      
+        - run: apk add --update make                                               
+        - run: make docker-build                                                   
+        - run: make docker-save                                                    
+        - persist_to_workspace:                                                    
+            root: .                                                                
+            paths:                                                                 
             - bin/image.tar                                                       
-   docker-deploy:                                                                 
-     docker:                                                                      
-         - image: docker:stable-git                                               
-     steps:                                                                       
+    docker-deploy:                                                                 
+      docker:                                                                      
+          - image: docker:stable-git                                               
+      steps:                                                                       
+        - checkout                                                                 
+        - attach_workspace:                                                        
+            at: /tmp/workspace                                                     
+        - setup_remote_docker                                                      
+        - run: apk add --update make                                               
+        - run: echo "$DOCKER_PASS" | docker login -u="$DOCKER_USER" --password-stdin
+        - run: docker load -i /tmp/workspace/bin/image.tar                         
+        - run: make docker-deploy
+    github-deploy:                                                                 
+      docker:                                                                      
+        - image: golang:1.13   
+      steps:                                                                       
        - checkout                                                                 
-       - attach_workspace:                                                        
-           at: /tmp/workspace                                                     
-       - setup_remote_docker                                                      
-       - run: apk add --update make                                               
-       - run: echo "$DOCKER_PASS" | docker login -u="$DOCKER_USER" --password-stdin
-       - run: docker load -i /tmp/workspace/bin/image.tar                         
-       - run: make docker-deploy                                                  
+       - run: go get -u github.com/tcnksm/ghr
+       - run: make build-linux
+       - run: ghr $CIRCLE_TAG bin/                                                  
                                                                                   
-                                                                                  
- workflows:                                                                       
-   version: 2                                                                     
-   test_build_docker:                                                             
-     jobs:                                                                        
-       - test:                                                                    
-           filters:                                                               
-             tags:                                                                
-               only: /.*/                                                         
-       - docker-build:                                                            
-           filters:                                                               
-             tags:                                                                
-               only: /.*/                                                         
-       - docker-deploy:                                                           
-           requires:                                                              
-             - test                                                               
-             - docker-build                                                       
-           filters:                                                               
-             tags:                                                                
-               only: /^v.*/                                                       
-             branches:                                                            
-               ignore: /.*/
+workflows:                                                                       
+  version: 2                                                                     
+  test_build_docker:                                                             
+    jobs:                                                                        
+      - test:                                                                    
+          filters:                                                               
+            tags:                                                                
+              only: /.*/                                                         
+      - docker-build:                                                            
+          filters:                                                               
+            tags:                                                                
+              only: /.*/                                                         
+      - docker-deploy:                                                           
+          requires:                                                              
+            - test                                                               
+            - docker-build                                                       
+          filters:                                                               
+            tags:                                                                
+              only: /^v.*/                                                       
+            branches:                                                            
+              ignore: /.*/
+      - github-deploy:                                                           
+          requires:                                                              
+            - test                                                               
+          filters:                                                               
+            tags:                                                                
+              only: /^v.*/                                                       
+            branches:                                                            
+              ignore: /.*/

@@ -10,5 +10,5 @@ FROM scratch
 COPY --from=build /go/src/github.com/shawntoffel/docker-secrets-provisioner/passwd /etc/passwd
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build --chown=100:101 /go/src/github.com/shawntoffel/docker-secrets-provisioner/bin/dsp .
-USER nobody
+USER dsp
 ENTRYPOINT ["./dsp"]
