@@ -3,9 +3,9 @@ jobs:
   test:                                                                          
     docker:                                                                      
       - image: golang:1.13                                                  
-      steps:                                                                       
-        - checkout                                                                 
-        - run: make                                                                
+    steps:                                                                       
+      - checkout                                                                 
+      - run: make                                                                
     docker-build:                                                                  
       docker:                                                                      
         - image: docker:stable-git                                               
